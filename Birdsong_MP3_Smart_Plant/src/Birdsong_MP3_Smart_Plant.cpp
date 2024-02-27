@@ -14,9 +14,15 @@
 // Let Device OS manage the connection to the Particle Cloud
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
+const int SONGPIN=D3;//pin that reads button to play mp3
+//int songButtonState;
+bool onOff;
+
+DFRobotDFPlayerMini myDFPlayer;//declare mp3 player object
+Button songButton(SONGPIN);
+
 // Run the application and system concurrently in separate threads
 //SYSTEM_THREAD(ENABLED);
-DFRobotDFPlayerMini myDFPlayer;//declare mp3 player object
 
 
 // setup() runs once, when the device is first turned on
@@ -32,12 +38,13 @@ void setup() {
     while(true);
   }
   Serial.println(F("DFPlayer Mini online."));
+  
+  onOff=false;
 
-  //myDFPlayer.randomAll();//these top 2 are in Adam's code, just see if they make it work...YES?!?!No it works anyway....
-  //myDFPlayer.pause();
+  
   myDFPlayer.volume(20);  //Set volume value. From 0 to 30
-  myDFPlayer.play(1);  //Play the first mp3
-  //delay(2000);
+ // myDFPlayer.play(1);  //Play the first mp3
+
 
 }
 
@@ -46,10 +53,11 @@ void setup() {
 
 // loop() runs over and over again, as quickly as it can execute.
 void loop() {
-  // The core of your code will likely live here.
-
-  // Example: Publish event to cloud every 10 seconds. Uncomment the next 3 lines to try it!
-  // Log.info("Sending Hello World to the cloud!");
-  // Particle.publish("Hello world!");
-  // delay( 10 * 1000 ); // milliseconds and blocking - see docs for more info!
+  if(songButton.isClicked()) {
+    onOff=!onOff;
+  }
+  if(onOff==TRUE) {
+  //myDFPlayer.volume(20);  //Set volume value. From 0 to 30
+  myDFPlayer.play(1);  //Play the first mp3
+}
 }
