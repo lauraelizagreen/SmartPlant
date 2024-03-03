@@ -12,7 +12,7 @@
 #include "Adafruit_MQTT/Adafruit_MQTT_SPARK.h"
 #include "Adafruit_MQTT/Adafruit_MQTT.h"
 #include "credentials.h"
-/*
+
 TCPClient TheClient;//global state (defines transmission control protocol connection)
 //Sets up MQTT client class
 Adafruit_MQTT_SPARK mqtt(&TheClient,AIO_SERVER,AIO_SERVERPORT,AIO_USERNAME,AIO_KEY);//object that defines connection
@@ -20,17 +20,17 @@ Adafruit_MQTT_SPARK mqtt(&TheClient,AIO_SERVER,AIO_SERVERPORT,AIO_USERNAME,AIO_K
 //FEEDS
 Adafruit_MQTT_Subscribe subFeedPumpButton = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/waterPlant"); //object for each feed
 Adafruit_MQTT_Publish pubFeedSoilMoisture = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/soilMoisture");
-*/
+
 //declare variables
 const int PUMPPIN=D7;//digital pin to turn pump on/off
 const int SOILPIN=A1;//analog pin for soil probe
 //unsigned int SOILPUBTIME;//for publishing time for soil sensor feed
 unsigned const int WATERTIME=1000;//how long to water after switched to on?
-unsigned const int SOILREAD=5000;//how often to read probe
+unsigned const int SOILREAD=60000;//how often to read probe
 unsigned int pumpTime;
 unsigned int soilTime; 
 int soilMoisture;//variable for soil data collected (to be published)
-bool buttonState;//from Dashboard waterPlant feed
+int buttonState;//from Dashboard waterPlant feed
 
 
 /************Declare Functions*************/
@@ -50,17 +50,17 @@ void setup() {
   Serial.begin(9600);
   waitFor(Serial.isConnected,10000);
 
-  /* Connect to Internet but not Particle Cloud  ***why not cloud??
+  ///* Connect to Internet but not Particle Cloud  ***why not cloud??
   WiFi.on();
   WiFi.connect();
   while(WiFi.connecting()) {
     Serial.printf(".");
   }
   Serial.printf("\n\n");
-  */
+  //*/
 
   // Setup MQTT subscription
-  //mqtt.subscribe(&subFeedPumpButton);
+  mqtt.subscribe(&subFeedPumpButton);
 
   pinMode(PUMPPIN,OUTPUT);
   pinMode(SOILPIN,INPUT);
@@ -76,7 +76,7 @@ void setup() {
 
 // loop() runs over and over again, as quickly as it can execute.
 void loop() {
-  /*
+  ///*
   MQTT_connect();
   MQTT_ping();
 //wait for incoming subscription packets
@@ -89,18 +89,23 @@ void loop() {
   //manual control of water pump from smart plant dashboard
   if(buttonState==HIGH){//put timer here for watering time
  digitalWrite(PUMPPIN,HIGH);
- Serial.printf("WATERING PLANT\n");
+ Serial.printf("WATERING PLANT REMOTELY\n");
 }
 else{
   digitalWrite(PUMPPIN,LOW);
 }
-*/
+//*/
 ///*
 
 
 if(millis()-soilTime>SOILREAD) {
 soilMoisture=analogRead(SOILPIN);
 Serial.printf("soil moisture is %i\n",soilMoisture);//add publishing here too
+if(mqtt.Update()) {
+      pubFeedSoilMoisture.publish(soilMoisture);
+      Serial.printf("Publishing %i \n",soilMoisture); 
+      } 
+
 soilTime=millis();
 if(soilMoisture>1500) { 
   pumpTime=millis();//can't set this initially in setup bc could be a long time before soil is dry...
@@ -109,9 +114,11 @@ if(soilMoisture>1500) {
 
   while(millis()-pumpTime<WATERTIME) {
     digitalWrite(PUMPPIN,HIGH);
+    Serial.printf("Pump ON\n");
      
 }
 digitalWrite(PUMPPIN,LOW);
+Serial.printf("Pump OFF\n");
   
      
   }
@@ -145,7 +152,7 @@ if((millis()-lastTime > 10000)) {//publishing (how often?)
 */
 
 ///Declare functions
-/*
+
 void MQTT_connect() {//actually connects to server, if not connected stuck in loop
   int8_t ret;//photon 2 thinks of integers as 32bits
  
@@ -182,7 +189,7 @@ bool MQTT_ping() {//broker will disconnect if doesn't hear anything, just remind
   }
   return pingStatus;
 }
-*/
+
 
 
 
