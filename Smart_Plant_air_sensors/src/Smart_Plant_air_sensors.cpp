@@ -12,23 +12,28 @@
 #include <Adafruit_MQTT.h>
 #include "Adafruit_MQTT/Adafruit_MQTT_SPARK.h"
 #include "Adafruit_MQTT.h"
-#include "credentials.h"
+#include "credentials.h"//credentials for connectiong to MQTT
+#include "Air_Quality_Sensor.h"
 
 TCPClient TheClient;
 
 Adafruit_MQTT_SPARK mqtt(&TheClient,AIO_SERVER,AIO_SERVERPORT,AIO_USERNAME,AIO_KEY);
 
 Adafruit_MQTT_Publish pubFeedDustSensor = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/dustSensor");
-
+Adafruit_MQTT_Publish pubFeedAirQuality = Adafruit_MQTT_Publish(&mqtt,AIO_USERNAME "/feeds/airQuality");
 
 const int DUSTPIN=D2;// Dust sensor needs 5V? or use D2
 const float DUSTSAMPTIME=30000;//30 second time to sample
-
+const int AIRQUALPIN=A0;//analog pin for air quality sensor
+int currentQual;//not sure I need this
+int slope;//quantitative measure
+int sensorValue;//current voltage
 unsigned int duration, dustStartTime,lastTimePubDust; //for publishing timing
 unsigned int lowPulseOccupancy;
-
 float ratio;
 float concentration;
+
+AirQualitySensor airQualSensor(AIRQUALPIN);//declare object for sensor
 
 //call functions to connect
 void MQTT_connect();
@@ -57,6 +62,17 @@ void setup() {
   Serial.printf("\n\n");
 //*/
 
+Serial.printf("waiting for sensor to initialize");
+delay(20000);
+
+if(airQualSensor.init()) {//is initial voltage btw 10 and 798?
+  Serial.printf("sensor ready.");
+}
+else {
+  Serial.printf("sensor ERROR!");
+}
+currentQual=1;//set initial air quality value
+
   pinMode(DUSTPIN,INPUT);
   //pinMode(AIRQUALPIN,INPUT);
   dustStartTime=millis();//for current time
@@ -70,6 +86,9 @@ void loop() {
   MQTT_connect();
   MQTT_ping();
 
+  slope=airQualSensor.slope();
+  sensorValue=airQualSensor.getValue();
+
   duration=pulseIn(DUSTPIN,LOW);
   lowPulseOccupancy=lowPulseOccupancy + duration;
   
@@ -78,9 +97,13 @@ void loop() {
   ratio=lowPulseOccupancy/(DUSTSAMPTIME*10);//for percent of time the signal is low
   concentration=1.1*pow(ratio,3)-3.8*pow(ratio,2)+ratio+520*ratio+0.62;//power function -so just description of relationship curve btw ratio and concentration
   Serial.printf("low pulse occupancy=%i\nratio=%f\nconcentration=%f\n",lowPulseOccupancy,ratio,concentration);
+  Serial.printf("air quality sensor slope is %i\nair quality sensor value is %i\n",slope,sensorValue);
+
   if(mqtt.Update()) {
    pubFeedDustSensor.publish(concentration);
-  Serial.printf("Publishing %f \n",concentration); 
+   pubFeedAirQuality.publish(slope);
+  Serial.printf("Publishing dust concentration=%f \n",concentration);
+  Serial.printf("Publishing air quality =%i \n",slope); 
   }
 
   lowPulseOccupancy=0;
