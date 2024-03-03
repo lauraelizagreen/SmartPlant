@@ -8,14 +8,23 @@
 
 // Include Particle Device OS APIs
 #include "Particle.h"
-//#include "IoTClassroom_CNM.h"//for timer
+#include <Adafruit_MQTT.h>
+#include "Adafruit_MQTT/Adafruit_MQTT_SPARK.h"
+#include "Adafruit_MQTT.h"
+#include "credentials.h"
+#include "IoTClassroom_CNM.h"//for timer
 #include "Adafruit_GFX.h"//include this hfile general graphics
 #include "Adafruit_SSD1306.h"//specific device only install this library
 #include "Adafruit_BME280.h"
 #include <bitmap.h>
 
+TCPClient TheClient;
 
-// Let Device OS manage the connection to the Particle Cloud
+Adafruit_MQTT_SPARK mqtt(&TheClient,AIO_SERVER,AIO_SERVERPORT,AIO_USERNAME,AIO_KEY);
+
+Adafruit_MQTT_Publish pubFeedTemp = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/temp");
+Adafruit_MQTT_Publish pubFeedHumid = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/humid");
+
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
 const int OLED_RESET=-1;
@@ -29,7 +38,7 @@ const int CAT_WIDTH =128;
 
 const int OLEDADR=0x3C;//address for OLED
 const int BMEADR=0x76;//address for BME280
-const int BMEDELAY=1000;
+const int BMEDELAY=30000;
 float tempC;
 unsigned int bmeStart;
 //float tempF;
@@ -42,9 +51,13 @@ bool status;
 Adafruit_BME280 bme;
 Adafruit_SSD1306 display(OLED_RESET);
 //IoTTimer bmeTimer;//not sure if I'll use this...
-///*
+//call functions to connect
+void MQTT_connect();
+bool MQTT_ping();
 
-//*/
+
+
+
 
 
 
@@ -74,6 +87,7 @@ display.clearDisplay();   // clears the screen and buffer
 display.clearDisplay();
 display.drawBitmap(0,0,CROCHETCAT,128,64,WHITE);
 display.display();
+delay(5000);
 ///*
 
 
@@ -98,6 +112,8 @@ digitalWrite(D7,HIGH);
 
 
 void loop() {
+  MQTT_connect();
+  MQTT_ping();
   //Serial.printf("test\n");
   tempC =bme.readTemperature();//deg C
   pressPA =bme.readPressure();//pascals
@@ -121,7 +137,50 @@ display.setCursor(0,5);
    bmeStart=millis(); 
    display.printf("temp=%0.2fC\npressure=%0.2f Pa\nhumidity=%0.2fRH\n",tempC,pressPA,humidRH);
    display.display();
+
+   if(mqtt.Update()) {
+    pubFeedTemp.publish(tempC);
+    pubFeedHumid.publish(humidRH);
+   }
+   bmeStart=millis();
   }
 
   
 }
+//define functions (maybe put in h file?)
+void MQTT_connect() {//actually connects to server, if not connected stuck in loop
+  int8_t ret;//photon 2 thinks of integers as 32bits
+ 
+  // Return if already connected.
+  if (mqtt.connected()) {
+    return;
+  }
+ 
+  Serial.print("Connecting to MQTT... ");
+ 
+  while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
+       Serial.printf("Error Code %s\n",mqtt.connectErrorString(ret));
+       Serial.printf("Retrying MQTT connection in 5 seconds...\n");
+       mqtt.disconnect();
+       delay(5000);  // wait 5 seconds and try again
+  }
+  Serial.printf("MQTT Connected!\n");
+}
+
+bool MQTT_ping() {//broker will disconnect if doesn't hear anything, just reminding broker still here so don't disconnect
+  static unsigned int last;
+  bool pingStatus;
+
+  if ((millis()-last)>120000) {
+      Serial.printf("Pinging MQTT \n");
+      pingStatus = mqtt.ping();
+      if(!pingStatus) {
+        Serial.printf("Disconnecting \n");
+        mqtt.disconnect();
+      }
+      last = millis();
+  }
+  return pingStatus;
+}
+
+
