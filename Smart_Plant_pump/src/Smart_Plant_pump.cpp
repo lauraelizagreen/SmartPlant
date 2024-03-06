@@ -84,6 +84,7 @@ void loop() {
   while ((subscription = mqtt.readSubscription(100))) {//subscription requires void setup to 1. subscribe anytime feed on cloud changes new data-let's you know-in setup
     if (subscription == &subFeedPumpButton) {//look at subscription feed for 1/10 sec to see if somethings there associated with feed created
       buttonState = atof((char *)subFeedPumpButton.lastread);//take last read and convert to ASCI from 0s and 1s and convert that to float.(or to integer)
+      Serial.printf("recieved buttonstate= %i from adafruit\n",buttonState);
     }
   }
   //manual control of water pump from smart plant dashboard
@@ -92,12 +93,13 @@ void loop() {
  Serial.printf("WATERING PLANT REMOTELY\n");
 }
 else{
-  digitalWrite(PUMPPIN,LOW);
-}
+  //digitalWrite(PUMPPIN,LOW);
+
+
 //*/
 ///*
 
-
+///*
 if(millis()-soilTime>SOILREAD) {
 soilMoisture=analogRead(SOILPIN);
 Serial.printf("soil moisture is %i\n",soilMoisture);//add publishing here too
@@ -119,11 +121,11 @@ if(soilMoisture>1500) {
 }
 digitalWrite(PUMPPIN,LOW);
 Serial.printf("Pump OFF\n");
-  
+} 
      
   }
   
-
+//*/
 /*timer for publishing soil data? or maybe just publish when read (timed there)
 if((millis()-lastTime > SOILPUBGAP)) {//publishing (how often?)
     if(mqtt.Update()) {

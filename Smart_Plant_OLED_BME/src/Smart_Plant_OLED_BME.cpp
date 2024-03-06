@@ -133,8 +133,7 @@ display.setCursor(0,5);
   if((millis()-bmeStart)>BMEDELAY){
     //bmeTimer.startTimer(BMEDELAY);
   //if(bmeTimer.isTimerReady()){ //use timer?
-   Serial.printf("temp=%0.2fC\npressure=%0.2f pascals\nhumidity=%0.2fRH\n",tempC,pressPA,humidRH);
-   bmeStart=millis(); 
+   Serial.printf("temp=%0.2fC\npressure=%0.2f pascals\nhumidity=%0.2fRH\n",tempC,pressPA,humidRH); 
    display.printf("temp=%0.2fC\npressure=%0.2f Pa\nhumidity=%0.2fRH\n",tempC,pressPA,humidRH);
    display.display();
 
